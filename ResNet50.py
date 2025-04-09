@@ -1,6 +1,13 @@
 import torch
 import torch.nn as nn
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+import tqdm
 
+#For visualization
+import matplotlib.pyplot as plt
+import numpy as np
+import random
 
 
 class Bottleneck(nn.Module):
@@ -91,7 +98,126 @@ class ResNet(nn.Module):
             
         return nn.Sequential(*layers)
         
-#----------------------------------------------------------------- ResNet Models -----------------------------------------------------------------  
+# ----------------------------------------------------------------- ResNet Models -----------------------------------------------------------------  
 #       
 def ResNet50(num_classes, channels=3):
     return ResNet(Bottleneck, [3,4,6,3], num_classes, channels)
+
+def train(model, train_loader, test_loader, optimizer, criterion, num_epochs=100):
+    for epoch in tqdm(range(num_epochs)):
+        model.train()
+        running_loss = 0.0
+        correct = 0
+        total = 0
+
+        for images, labels in train_loader:
+            images, labels = images.cuda(), labels.cuda()
+            optimizer.zero_grad()
+            outputs = model()
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+        train_accuracy = 100 * correct / total
+
+        # Validation loop
+        model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for images, labels in test_loader:
+                images, labels = images.cuda(), labels.cuda()
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+        
+        test_accuracy = 100 * correct / total
+
+        if epoch % 10 == 0:
+            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.5f}, Train Accuracy: {train_accuracy:.5f}%, Test Accuracy: {test_accuracy:.5f}%')
+
+        # Save the best model
+        if epoch == 0 or test_accuracy > best_accuracy:
+            best_accuracy = test_accuracy
+            torch.save(model.state_dict(), 'best_model.pth')
+            print(f'Saved model with accuracy: {best_accuracy:.5f}%')
+    
+def main():
+    # Initialize ResNet50 model, optimizer, and loss function
+    model = ResNet50(num_classes=10)
+    model.cuda()
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    criterion = nn.CrossEntropyLoss()
+
+    # Initialize the cifar-10 dataset
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+    train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
+    test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=2)
+
+    # Visualize the the 10 classes in the dataset with 5 images each
+    classes = train_dataset.classes
+    class_to_idx = train_dataset.class_to_idx
+    class_indices = {class_name: [] for class_name in classes}
+    for idx, (image, label) in enumerate(train_dataset):
+        class_name = classes[label]
+        if len(class_indices[class_name]) < 5:
+            class_indices[class_name].append(idx)
+    # Randomly select 5 images from each class
+    selected_indices = []
+    for class_name, indices in class_indices.items():
+        selected_indices.extend(random.sample(indices, 5))
+    # Plot the images
+    fig, axes = plt.subplots(5, 10, figsize=(15, 7))
+    for i, idx in enumerate(selected_indices):
+        image, label = train_dataset[idx]
+        ax = axes[i // 10, i % 10]
+        ax.imshow(np.transpose(image.numpy(), (1, 2, 0)))
+        ax.set_title(classes[label])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+    # Train and validate the model and print loss, train accuracy, and test accuracy
+    # Training loop
+    num_epochs = 200
+    train(model, train_loader, test_loader, optimizer, criterion, num_epochs)
+
+    #Load the best model
+    model = ResNet50(num_classes=10)
+    model.load_state_dict(torch.load('best_model.pth'))
+
+    # Test the model by classifying 10 random images from the test set
+    random_indices = random.sample(range(len(test_dataset)), 10)
+    images = []
+    labels = []
+    for idx in random_indices:
+        image, label = test_dataset[idx]
+        images.append(image)
+        labels.append(label)
+    images = torch.stack(images)
+    labels = torch.tensor(labels)
+    outputs = model(images)
+    _, predicted = torch.max(outputs.data, 1)
+    # Print the predicted and actual labels along with images
+    fig, axes = plt.subplots(2, 5, figsize=(15, 7))
+    for i, idx in enumerate(random_indices):
+        image, label = test_dataset[idx]
+        ax = axes[i // 5, i % 5]
+        ax.imshow(np.transpose(image.numpy(), (1, 2, 0)))
+        ax.set_title(f'Pred: {predicted[i].item()}, Actual: {label}')
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+        

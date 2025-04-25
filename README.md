@@ -114,15 +114,6 @@ These visualizations give deep insights into performance across all CIFAR-10 cla
 
 ---
 
-## To Do (Optional Enhancements)
-
-- Implement test-time augmentation (TTA)
-- Add learning rate scheduler (e.g., ReduceLROnPlateau)
-- Use ResNet or other architectures for comparison
-- Save model checkpoints and reload for inference
-
----
-
 ## Author
 
 Made by [Zichen Wang]  

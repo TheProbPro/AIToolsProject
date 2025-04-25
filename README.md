@@ -107,13 +107,6 @@ These visualizations give deep insights into performance across all CIFAR-10 cla
 
 ---
 
-## Sample Output
-
-![Confusion Matrix](assets/confusion_matrix.png)  
-*(You can add your own screenshots here)*
-
----
-
 ## Notes
 
 - This script uses random horizontal flips and random cropping for data augmentation.

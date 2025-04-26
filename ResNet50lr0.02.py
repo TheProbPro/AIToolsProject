@@ -353,15 +353,15 @@ def evaluate_model(model, test_loader):
 def main():
     # 1) run the hyperparam search
     print("Starting hyperparameter search...")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=20)
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective, n_trials=20)
     print("Best trial:")
-    print(study.best_trial.params)
+    #print(study.best_trial.params)
 
     # 2) build final loaders & model with best params
     print("Loading data with best params...")
-    best = study.best_trial.params
-    train_loader, test_loader = load_CIFAR10(best['batch_size'])
+    #best = study.best_trial.params
+    train_loader, test_loader = load_CIFAR10(128)#best['batch_size'])
     train_dataset = train_loader.dataset
     test_dataset = test_loader.dataset
     print("CIFAR-10 dataset loaded.")
@@ -394,8 +394,8 @@ def main():
     model = ResNet50(num_classes=10)
     model.cuda()
     optimizer = torch.optim.Adam(model.parameters(),
-                                 lr=best['lr'],
-                                 weight_decay=best['wd'])
+                                 lr=0.02)#best['lr'],
+                                 #weight_decay=best['wd'])
     criterion = nn.CrossEntropyLoss()
     print("Model initialized.")
 

@@ -1,7 +1,7 @@
 import optuna
 import torch
 import torch.nn as nn
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 import tqdm.auto as tqdm
 
@@ -131,7 +131,7 @@ def load_CIFAR10(batch_size=64):
 
 def objective(trial):
     # 1) sample hyperparameters
-    lr          = trial.suggest_loguniform('lr', 1e-4, 1e-2)
+    lr          = trial.suggest_loguniform('lr', 1e-3, 1e-1)
     weight_decay= trial.suggest_loguniform('wd', 1e-6, 1e-2)
     batch_size  = trial.suggest_categorical('batch_size', [32, 64, 128])
 
@@ -140,7 +140,8 @@ def objective(trial):
 
     # 3) model / optimizer / loss
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = ResNet50(num_classes=10).to(device)
+    #model = ResNet50(num_classes=10).to(device)
+    model = models.resnet50(pretrained=True).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = nn.CrossEntropyLoss()
 
@@ -391,7 +392,8 @@ def main():
 
 
     # Initialize ResNet50 model, optimizer, and loss function
-    model = ResNet50(num_classes=10)
+    model = models.resnet50(pretrained=True)
+    #model = ResNet50(num_classes=10)
     model.cuda()
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=best['lr'],
@@ -407,7 +409,8 @@ def main():
     # 4) evaluation / confusion, ROC, etc
     #Load the best model
     print("Loading the best model...")
-    model = ResNet50(num_classes=10)
+    #model = ResNet50(num_classes=10)
+    model = models.resnet50(pretrained=False)
     model.load_state_dict(torch.load('best_model.pth'))
     model.cuda()
 
